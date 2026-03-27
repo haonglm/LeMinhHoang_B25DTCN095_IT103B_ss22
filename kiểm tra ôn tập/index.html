@@ -37,6 +37,7 @@
                 type="text"
                 id="searchInput"
                 placeholder="Tên sản phẩm, mã SP…"
+                oninput = "searchProduct()"
               />
             </div>
           </div>
@@ -222,92 +223,139 @@
 
         let tBodyElement = document.getElementById("tbody");
         let editId = 0;
-        
+
         // hiển thị
-        function renderProducts() {
+        function renderProducts(list = products) {
             tBodyElement.innerHTML = "";
-            if (products.length === 0) {
+            if (list.length === 0) {
                 document.getElementById("emptyState").style.display = "block";
+                return;
             } else {
                 document.getElementById("emptyState").style.display = "none";
             }
-
-            products.forEach((product) => {
+            list.forEach((product, index) => {
                 tBodyElement.innerHTML += `
-                <tr id="row-${product.id}">
-                    <td>${product.id}</td>
-                    <td class="td-name">${product.name}</td>
-                    <td class="td-price">${product.price.toLocaleString("vi-VN")} ₫</td>
-                    <td class="center" style="font-weight: 700">${product.stock}</td>
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${product.name}</td>
+                    <td>${Number(product.price).toLocaleString("vi-VN")} ₫</td>
+                    <td class="center">${product.stock}</td>
                     <td>
-                        <div class="td-actions">
-                            <button class="btn btn-sm btn-edit">✏ Sửa</button>
-                            <button class="btn btn-sm btn-del" onclick="deleteProduct(${product.id})">✕ Xóa</button>
-                        </div>
+                        <button onclick="editProduct(${product.id})">✏ Sửa</button>
+                        <button onclick="deleteProduct(${product.id})">✕ Xóa</button>
                     </td>
                 </tr>
                 `;
             });
         }
 
-        //thêm
+        
+        //chức năng thêm và cập nhật
         function addProduct(e) {
             e.preventDefault();
-            const iNameElement = document.getElementById("iName");
-            const iPriceElement = document.getElementById("iPrice");
-            const iStockElement = document.getElementById("iStock");
-            const productInput = iNameElement.value;
-            const productPrice = iPriceElement.value;
-            const productStock = iStockElement.value;
-            
-            if(editId === 0){
-                let newProduct = {
-                id: products.length !== 0 ? products[products.length - 1].id + 1 : 1,
-                name: productInput,
-                price: productPrice,
-                stock: productStock,
-            };
-            products.push(newProduct);
-            }else{
-                const editIndex = products.find((product) => product.id === editId);
-                products[editIndex].name = productInput;
-                products[editIndex].price = productPrice;
-                products[editIndex].stock = productStock;
+
+            const name = document.getElementById("iName").value.trim();
+            const price = Number(document.getElementById("iPrice").value);
+            const stock = Number(document.getElementById("iStock").value);
+
+            if (!name) {
+                alert("Vui lòng nhập tên sản phẩm.");
+                return false;
+            }
+
+            const isDuplicate = products.some(p => p.name.toLowerCase() === name.toLowerCase() && p.id !== editId);
+            if (isDuplicate) {
+                alert("Tên sản phẩm đã tồn tại.");
+                return false;
+            }
+
+            if (price <= 0) {
+                alert("Giá phải là số dương lớn hơn 0.");
+                return false;
+            }
+
+
+            if (editId === 0) {
+                let newId = products.length ? Math.max(...products.map(p => p.id)) + 1 : 1;
+                products.push({
+                    id: newId,
+                    name,
+                    price,
+                    stock
+                });
+            } else {
+                let index = products.findIndex(p => p.id === editId);
+                products[index].name = name;
+                products[index].price = price;
+                products[index].stock = stock;
                 editId = 0;
-                const formBtn = document.getElementById("formBtn");
-                formBtn.innerHTML = "thêm sản phẩm";
+                document.getElementById("formTitle").innerText = "Thêm sản phẩm mới";
+                document.getElementById("btnSubmit").innerText = "Thêm sản phẩm";
             }
 
             localStorage.setItem("products", JSON.stringify(products));
             renderProducts();
-            iNameElement.value = "";
-            iPriceElement.value = "";
-            iStockElement.value = "";
+            resetForm();
         }
 
-        //xóa
+        //sửa
+        function editProduct(id) {
+            let product = products.find(p => p.id === id);
+            document.getElementById("iName").value = product.name;
+            document.getElementById("iPrice").value = product.price;
+            document.getElementById("iStock").value = product.stock;
+            editId = id;
+            document.getElementById("formTitle").innerText = "Chỉnh sửa sản phẩm";
+            document.getElementById("btnSubmit").innerText = "Lưu thay đổi";
+        }
+
+        //chức năng xóa sản phẩm
         function deleteProduct(id) {
-            confirm("Bạn có chắc muốn xóa sản phẩm không?");
-            if(!confirm) return;
-            products = products.filter((product) => product.id !== id);
+            const isConfirm = confirm("Bạn có chắc muốn xóa sản phẩm không?");
+            if (!isConfirm) return;
+            products = products.filter(p => p.id !== id);
             localStorage.setItem("products", JSON.stringify(products));
             renderProducts();
         }
 
-        //sửa thông tin sản phẩm
-        function editProduct(startEditId) {
-            const editProduct = products.find((product) => product.id === startEditId);
-            const iNameElement = document.getElementById("iName");
-            const iPriceElement = document.getElementById("iPrice");
-            const iStockElement = document.getElementById("iStock");
-            const formBtn = document.getElementById("formBtn");
-            iNameElement.value = editProduct.name;
-            iPriceElement.value = editProduct.price;
-            iStockElement.value = editProduct.stock;
-            formBtn.innerHTML = "sửa sản phẩm";
-            editId = startEditId;
+        //hàm reset
+        function resetForm() {
+            document.getElementById("iName").value = "";
+            document.getElementById("iPrice").value = "";
+            document.getElementById("iStock").value = "";
+            editId = 0;
+            document.getElementById("formTitle").innerText = "Thêm sản phẩm mới";
+            document.getElementById("btnSubmit").innerText = "Thêm sản phẩm";
         }
 
+        //chức năng tìm kiếm sản phẩm theo tên
+        function searchProduct() {
+            const keyword = document.getElementById("searchInput").value.toLowerCase();
+            let filtered = products.filter(p =>p.name.toLowerCase().includes(keyword));
+            renderProducts(filtered);
+        }
+
+        //chức năng lọc theo tên, giá tăng dần, giảm dần
+        function sortProduct() {
+            let value = document.getElementById("sortSelect").value;
+            let sorted = [...products];
+
+            switch (value) {
+                 case "name_asc":
+              sorted.sort((a, b) => a.name.localeCompare(b.name));
+              break;
+          case "name_desc":
+              sorted.sort((a, b) => b.name.localeCompare(a.name));
+              break;
+          case "price_asc":
+              sorted.sort((a, b) => a.price - b.price);
+              break;
+          case "price_desc":
+              sorted.sort((a, b) => b.price - a.price);
+                    break;
+            }
+            renderProducts(sorted);
+        }
         renderProducts();
     </script>
   </body>
